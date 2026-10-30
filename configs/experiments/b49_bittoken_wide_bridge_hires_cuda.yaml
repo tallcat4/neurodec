@@ -1,0 +1,5 @@
+# Recommended configuration with the 160-band / 1024-FFT conditioning target.
+inherit: b49_bittoken_wide_bridge_cuda.yaml
+model:
+  aux_mels: 160
+  mel_spec: {n_mels: 160, n_fft: 1024, win: 800}

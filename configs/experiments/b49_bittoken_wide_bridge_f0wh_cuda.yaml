@@ -1,0 +1,4 @@
+inherit: b49_bittoken_wide_bridge_f0exc_cuda.yaml
+model:
+  istft: {width: 192, layers: 6, expansion: 3, n_fft: 512, hop: 80, upsample: learned, excitation: true,
+          excitation_mode: wavehax, excitation_proj: conv2d}

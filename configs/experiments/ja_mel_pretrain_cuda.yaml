@@ -1,0 +1,5 @@
+# Mel-conditioned backend pre-training on clean speech (no radio, so no recording budget).
+inherit: ja_multidisc_cuda.yaml
+train:
+  disc_start: 2000
+  workers: 6                # clean crops are read and resampled from the corpus files

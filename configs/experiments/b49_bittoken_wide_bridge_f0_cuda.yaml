@@ -1,0 +1,7 @@
+# Recommended configuration + periodicity heads (log-F0 and voicing from the clean-source teacher).
+inherit: b49_bittoken_wide_bridge_cuda.yaml
+model:
+  f0_head: true
+loss:
+  lambda_f0: 1.0
+  lambda_vuv: 0.5

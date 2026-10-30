@@ -1,0 +1,7 @@
+# Soft source-filter: per-bin gate in [0.5, 1] mixes the filtered harmonic-plus-noise excitation with a
+# freely generated phasor under one predicted magnitude. Tests whether the gender gap stays closed while
+# the quality cap of the hard source-filter (3.26) is lifted.
+inherit: ja_mel_pretrain_istft_sf_cuda.yaml
+model:
+  istft: {width: 192, layers: 6, expansion: 3, n_fft: 512, hop: 80, upsample: learned, excitation: true,
+          excitation_harmonics: 66, source_filter: true, gate_floor: 0.5}

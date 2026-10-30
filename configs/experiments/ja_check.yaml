@@ -1,0 +1,18 @@
+# Real-speech check with the Japanese corpora only (before LibriTTS-R is downloaded):
+# 1 h campaign, 49 bit. Same model/training as the paper, fewer steps.
+inherit: ../bits49.yaml
+data_dir: data/ja_check
+corpora:
+  - {name: jvs, type: jvs, lang: ja, root: corpora/jvs_ver1}
+  - {name: jsut, type: jsut, lang: ja, root: corpora/jsut_ver1.1}
+  - {name: synth, type: synth, lang: synth, count: 300, seed: 0}
+budget:
+  hours: 1.0
+  lang_share: {ja: 0.92, synth: 0.08}
+  test_speakers_per_lang: 5
+  test_minutes_per_lang: 10
+train:
+  steps: 3000
+  disc_start: 100000
+  eval_interval: 1000
+  save_interval: 1000

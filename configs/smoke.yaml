@@ -1,0 +1,26 @@
+# Minutes-scale end-to-end check (M5 / CPU). Probe signals only, so no corpus is needed;
+# the "en" entry is a second probe set so that a test split exists.
+inherit: base.yaml
+data_dir: data/smoke
+corpora:
+  - {name: synth, type: synth, lang: synth, count: 150, seed: 0}
+  - {name: synth_eval, type: synth, lang: en, count: 150, seed: 1}
+budget:
+  hours: 0.15
+  lang_share: {en: 0.5, synth: 0.5}
+  test_speakers_per_lang: 1
+  test_minutes_per_lang: 2
+session: {seconds: 30}
+align: {max_sessions: 20}
+model:
+  generator: {layers: 10, stacks: 1}
+train:
+  steps: 300
+  disc_start: 200
+  batch_size: 4
+  workers: 0
+  items_per_epoch: 1000
+  log_interval: 25
+  eval_interval: 150
+  save_interval: 150
+  val_items: 4

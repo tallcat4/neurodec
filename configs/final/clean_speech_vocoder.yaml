@@ -1,0 +1,177 @@
+# FINAL codec-independent vocoder: small iSTFT (Vocos-style) generator with MPD/MRD critics, trained on
+# CLEAN speech only (mel -> waveform; no radio time, no codec knowledge). The harmonic-plus-noise
+# excitation inputs are kept because the final decoder was trained with this vocoder, but
+# scripts/diagnostics/excitation_sensitivity.py showed the network ignores them (see docs/experiments.md).
+# Self-contained flattening of configs/experiments/ja_mel_pretrain_istft_excap_cuda.yaml.
+# Evaluated model: runs/mel_istft_excap/last.pt (upper bound PESQ 3.68 from true mel).
+seed: 1
+bits: bits49
+data_dir: data/ja_check
+blackbox:
+  secret_seed: 20261027
+  block_frames: 2
+corpora:
+- name: jvs
+  type: jvs
+  lang: ja
+  root: corpora/jvs_ver1
+- name: jsut
+  type: jsut
+  lang: ja
+  root: corpora/jsut_ver1.1
+- name: synth
+  type: synth
+  lang: synth
+  count: 300
+  seed: 0
+budget:
+  hours: 1.0
+  lang_share:
+    ja: 0.92
+    en: 0.46
+    synth: 0.08
+  test_speakers_per_lang: 5
+  test_minutes_per_lang: 10
+session:
+  seconds: 60
+  gap:
+  - 0.3
+  - 1.0
+  level_db:
+  - -32
+  - -20
+  max_lead_in: 0
+sim:
+  drift_ppm: 50
+  rt60:
+  - 0.05
+  - 0.5
+  drr_db:
+  - 0
+  - 15
+  level_db:
+  - -30
+  - -18
+  snr_db:
+  - 20
+  - 40
+  agc: true
+  agc_prob: 0.5
+align:
+  search_frames:
+  - -2
+  - 12
+  max_sessions: 60
+test_conditions:
+- clean
+- sim
+model:
+  dequant:
+    group_frames: 1
+    kernels:
+    - - 3
+      - 5
+    - - 5
+      - 5
+    - - 7
+      - 5
+    channels:
+    - 8
+    - 16
+    kernel_1d: 5
+    heads: 3
+    d_head: 4
+    d_ff: 16
+    ffn_dims:
+    - 1024
+    - 56
+    attn_axis: bit
+    soft_perm: false
+  upsample_scales:
+  - 4
+  - 4
+  - 5
+  - 2
+  aux_channels: 80
+  gau_kernel: 1
+  generator:
+    layers: 30
+    stacks: 3
+    residual: 64
+    gate: 128
+    skip: 64
+    kernel: 3
+  discriminator:
+    layers: 10
+    channels: 64
+    kernel: 3
+  discriminator_kind: multi
+  multi_discriminator:
+    periods:
+    - 2
+    - 3
+    - 5
+    - 7
+    - 11
+    period_channels:
+    - 16
+    - 64
+    - 128
+    - 256
+    - 256
+    ffts:
+    - 256
+    - 512
+    - 1024
+    spectrum_channels: 32
+  backend: istft
+  istft:
+    width: 192
+    layers: 6
+    expansion: 3
+    n_fft: 512
+    hop: 80
+    upsample: learned
+    excitation: true
+loss:
+  stft:
+    ffts:
+    - 512
+    - 1024
+    - 256
+    hops:
+    - 60
+    - 120
+    - 25
+    wins:
+    - 300
+    - 600
+    - 120
+  adv: lsgan
+  lambda_adv: 1.0
+  lambda_fm: 2.0
+  lambda_mel: 1.0
+train:
+  device: cuda
+  steps: 800000
+  disc_start: 1000
+  batch_size: 12
+  crop_frames: 50
+  lr_g: 0.0005
+  lr_d: 5.0e-05
+  lr_step_g: 50000
+  lr_step_d: 50000
+  grad_clip_g: 10.0
+  grad_clip_d: 1.0
+  ber_max: 0.0
+  items_per_epoch: 100000
+  workers: 12
+  log_interval: 100
+  eval_interval: 1000
+  save_interval: 1000
+  keep_interval: 1000
+  val_items: 16
+  cpu_threads: 4
+  cudnn_benchmark: true
+  tf32: true
+  freeze_d_in_g: true

@@ -1,0 +1,3 @@
+inherit: ja_multidisc_cuda.yaml
+train:
+  disc_start: 46000

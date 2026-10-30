@@ -1,0 +1,10 @@
+# Bit-token frontend (codec-agnostic) + PWG + MPD/MRD, with the auxiliary clean log-mel target.
+inherit: ja_multidisc_cuda.yaml
+model:
+  frontend_kind: bittoken
+  bittoken: {d_token: 64, token_layers: 2, token_heads: 4, width: 256, layers: 6, expansion: 3, mixer: transformer}
+  aux_mels: 80
+loss:
+  lambda_aux_mel: 1.0
+train:
+  disc_start: 2000          # backend and critics arrive pre-trained (mel-conditioned)

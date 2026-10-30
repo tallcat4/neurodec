@@ -1,0 +1,9 @@
+# Long mel-conditioned iSTFT pre-training on clean speech (codec-agnostic, reusable backend).
+# The learned condition upsampler starts as linear interpolation and can learn to smooth
+# the 20 ms steps of frame-rate conditioning (frame buzz).
+inherit: ja_mel_pretrain_istft_cuda.yaml
+model:
+  istft: {width: 192, layers: 6, expansion: 3, n_fft: 512, hop: 80, upsample: learned}
+train:
+  lr_step_g: 50000
+  lr_step_d: 50000

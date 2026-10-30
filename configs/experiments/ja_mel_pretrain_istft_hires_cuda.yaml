@@ -1,0 +1,7 @@
+# Higher-resolution conditioning: 160 log-mel bands from a 1024-point STFT (narrow low bands resolve
+# the dense harmonics of low-pitched voices). Clean-speech iSTFT vocoder pre-training, learned upsampler.
+inherit: ja_mel_pretrain_istft_long_cuda.yaml
+model:
+  mel_spec: {n_mels: 160, n_fft: 1024, win: 800}
+train:
+  disc_start: 1000

@@ -1,0 +1,10 @@
+# Two-stage training: the wide BitToken frontend learns through a FROZEN clean-speech iSTFT vocoder
+# (mel_istft_long) via its predicted log-mel; waveform, mel, auxiliary-mel and adversarial losses
+# all flow into the frontend only. The vocoder the user judged artifact-free stays untouched.
+inherit: b49_bittoken_wide_istft_cuda.yaml
+model:
+  mel_bridge: true
+train:
+  freeze_backend: true
+  disc_start: 0
+  ber_max: 0.02

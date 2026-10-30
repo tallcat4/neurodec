@@ -1,0 +1,8 @@
+# Control: the paper's dequantizer with the same auxiliary mel target, backend and critics.
+inherit: ja_multidisc_cuda.yaml
+model:
+  aux_mels: 80
+loss:
+  lambda_aux_mel: 1.0
+train:
+  disc_start: 2000

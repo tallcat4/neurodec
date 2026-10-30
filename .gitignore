@@ -1,0 +1,35 @@
+# local environment
+/.venv/
+/.uv-cache/
+**/__pycache__/
+**/.pytest_cache/
+**/pytest-cache-files-*/
+**/.tmp/
+*.pyc
+*.o
+*.a
+*.exe
+*.pt.tmp
+
+# local data: campaigns, training runs, evaluation outputs (contain corpus audio, not redistributable)
+/data/
+/runs/
+/results/
+/corpora/
+
+# codecs are external black boxes, never part of this repository
+/ambe2-c/
+/mrl-celp-c/
+/snapshots/
+
+# third-party papers
+/IEEE/
+/*.pdf
+
+# superseded checkpoints kept locally only
+/checkpoints/practical_*
+
+# archives of the development period
+/*.tar
+/archive-contents.txt
+/windows-environment.txt

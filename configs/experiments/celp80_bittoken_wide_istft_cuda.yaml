@@ -1,0 +1,10 @@
+# CELP codec (mrl-celp-c), same recipe as the practical AMBE milestone: wide BitToken frontend,
+# small iSTFT with the learned upsampler, clean-speech mel pre-training reused as is.
+inherit: b49_bittoken_wide_istft_cuda.yaml
+bits: mrl80
+data_dir: data/celp80
+blackbox:
+  secret_seed: 20261028
+  block_frames: 2
+train:
+  ber_max: 0.02

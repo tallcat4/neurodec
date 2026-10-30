@@ -1,0 +1,5 @@
+# Controlled continuation: change only the GAN onset relative to the baseline.
+# The existing G/D optimizer and LR scheduler states are restored from step46000.
+inherit: ja_check_cuda.yaml
+train:
+  disc_start: 46000

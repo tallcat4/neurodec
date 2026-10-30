@@ -1,0 +1,4 @@
+# Wide frontend + bit-flip augmentation up to 2 % (12 h, iSTFT with learned upsampler).
+inherit: b49_bittoken_wide_istft_cuda.yaml
+train:
+  ber_max: 0.02

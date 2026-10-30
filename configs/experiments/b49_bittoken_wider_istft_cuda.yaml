@@ -1,0 +1,4 @@
+# Wider/deeper BitToken frontend (width 512, 10 temporal blocks) + iSTFT (learned upsampler), 12 h.
+inherit: b49_bittoken_mlp_istft_learned_cuda.yaml
+model:
+  bittoken: {mixer: mlp, mlp_hidden: 2048, width: 512, layers: 10, expansion: 3}

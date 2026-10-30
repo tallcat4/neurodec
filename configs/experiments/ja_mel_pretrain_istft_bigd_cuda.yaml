@@ -1,0 +1,11 @@
+# Backend candidate B1: Vocos-scale critics (wider MPD, wider MRD) on the long-pre-trained iSTFT generator.
+inherit: ja_mel_pretrain_istft_long_cuda.yaml
+model:
+  multi_discriminator:
+    periods: [2, 3, 5, 7, 11]
+    period_channels: [32, 128, 512, 1024, 1024]
+    ffts: [256, 512, 1024]
+    spectrum_channels: 64
+train:
+  disc_start: 1000
+  lr_d: 1.0e-4

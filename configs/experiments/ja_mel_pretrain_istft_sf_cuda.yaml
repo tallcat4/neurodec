@@ -1,0 +1,7 @@
+# Source-filter iSTFT vocoder: the network outputs a complex filter applied to the harmonic-plus-noise
+# excitation spectrum (66 harmonics to Nyquist, band aperiodicity from the clean source), so the F0
+# prior cannot be ignored (scripts/excitation_sensitivity.py showed additive excitation was ignored).
+inherit: ja_mel_pretrain_istft_excap_cuda.yaml
+model:
+  istft: {width: 192, layers: 6, expansion: 3, n_fft: 512, hop: 80, upsample: learned, excitation: true,
+          excitation_harmonics: 66, source_filter: true}

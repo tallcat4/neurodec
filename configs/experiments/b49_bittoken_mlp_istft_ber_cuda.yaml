@@ -1,0 +1,4 @@
+# 12 h, proposed frontend + iSTFT (learned upsampler), with random bit-flip augmentation up to 2 %.
+inherit: b49_bittoken_mlp_istft_learned_cuda.yaml
+train:
+  ber_max: 0.02

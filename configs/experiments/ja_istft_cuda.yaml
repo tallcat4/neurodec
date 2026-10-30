@@ -1,0 +1,10 @@
+# Experimental backend; original frame-feature extractor is unchanged.
+inherit: ja_check_cuda.yaml
+model:
+  backend: istft
+  istft: {width: 192, layers: 6, expansion: 3, n_fft: 512, hop: 80}
+  discriminator:
+    initialization: pwg
+train:
+  steps: 800000
+  disc_start: 5000

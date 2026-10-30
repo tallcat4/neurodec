@@ -1,0 +1,7 @@
+# Same GAN continuation as the control, with PWG-reference D initialization.
+# First prepare a NEW run using scripts.prepare_gan_run; otherwise resuming an
+# old last.pt would restore its old discriminator and override initialization.
+inherit: ja_gan_from46000.yaml
+model:
+  discriminator:
+    initialization: pwg

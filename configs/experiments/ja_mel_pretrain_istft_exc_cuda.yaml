@@ -1,0 +1,7 @@
+# Clean-speech iSTFT vocoder with harmonic-plus-noise excitation from (teacher) F0 / voicing.
+inherit: ja_mel_pretrain_istft_long_cuda.yaml
+model:
+  istft: {width: 192, layers: 6, expansion: 3, n_fft: 512, hop: 80, upsample: learned, excitation: true}
+train:
+  disc_start: 1000
+  workers: 12               # pyworld F0 per clean crop runs in the loader workers

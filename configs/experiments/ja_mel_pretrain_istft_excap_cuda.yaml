@@ -1,0 +1,2 @@
+# Clean-speech iSTFT vocoder with harmonic-plus-noise excitation mixed per band by the teacher aperiodicity.
+inherit: ja_mel_pretrain_istft_exc_cuda.yaml

@@ -1,0 +1,3 @@
+inherit: base.yaml
+bits: bits72
+data_dir: data/bits72

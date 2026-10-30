@@ -1,0 +1,9 @@
+# Preserve the paper's model, batch size and optimizer; only tune the runtime.
+inherit: ja_check.yaml
+train:
+  device: cuda
+  cpu_threads: 4
+  workers: 0
+  cudnn_benchmark: true
+  tf32: true
+  keep_interval: 1000

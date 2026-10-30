@@ -1,0 +1,4 @@
+# Bit-token frontend with the MLP mixer (faster, equal probe accuracy on 2026-10-27).
+inherit: ja_bittoken_multidisc_cuda.yaml
+model:
+  bittoken: {mixer: mlp, mlp_hidden: 1024, width: 256, layers: 6, expansion: 3}

@@ -1,0 +1,85 @@
+# Defaults follow Kim et al. (IEEE SPL 2022) Sec. III-B unless noted.
+seed: 1
+bits: bits49                 # bits49 (RATET 34) | bits72 (RATET 33, FEC included)
+data_dir: data/bits49
+
+blackbox:                    # read only by neurodec.blackbox (the "radio")
+  secret_seed: 20261027      # interleaver permutation: never used by training/analysis
+  block_frames: 2            # burst = 2 frames; public, like a real frame structure
+
+corpora:                     # see scripts/download_corpora.sh
+  - {name: jvs, type: jvs, lang: ja, root: corpora/jvs_ver1}
+  - {name: jsut, type: jsut, lang: ja, root: corpora/jsut_ver1.1}
+  - {name: libritts_r, type: libritts, lang: en, root: corpora/LibriTTS_R}
+  - {name: synth, type: synth, lang: synth, count: 2000, seed: 0}
+
+budget:                      # recording campaign: at most 12 h on air
+  hours: 12
+  lang_share: {ja: 0.46, en: 0.46, synth: 0.08}
+  test_speakers_per_lang: 10
+  test_minutes_per_lang: 20
+
+session:                     # one PTT transmission
+  seconds: 60
+  gap: [0.3, 1.0]
+  level_db: [-32, -20]
+  max_lead_in: 0             # constant radio delay assumed (0 = no extra start jitter)
+
+sim:                         # loudspeaker -> room -> radio microphone
+  drift_ppm: 50
+  rt60: [0.05, 0.5]
+  drr_db: [0, 15]
+  level_db: [-30, -18]
+  snr_db: [20, 40]
+  agc: true
+  agc_prob: 0.5
+
+align:
+  search_frames: [-2, 12]
+  max_sessions: 60
+
+test_conditions: [clean, sim]
+
+model:
+  dequant:
+    group_frames: 1          # paper: 1 (one frame per row); 2 = burst as one unit (ablation)
+    kernels: [[3, 5], [5, 5], [7, 5]]
+    channels: [8, 16]        # j = 2 CNN layers
+    kernel_1d: 5
+    heads: 3                 # k
+    d_head: 4
+    d_ff: 16
+    ffn_dims: [1024, 56]
+    attn_axis: bit           # attention over the bits of each frame; "full" = all tokens of the crop
+    soft_perm: false
+  upsample_scales: [4, 4, 5, 2]   # paper's AMBE setting, 160 = 20 ms at 8 kHz
+  aux_channels: 80
+  gau_kernel: 1
+  generator: {layers: 30, stacks: 3, residual: 64, gate: 128, skip: 64, kernel: 3}
+  discriminator: {layers: 10, channels: 64, kernel: 3}
+
+loss:
+  stft: {ffts: [512, 1024, 256], hops: [60, 120, 25], wins: [300, 600, 120]}  # PWG sizes halved
+  adv: lsgan                 # PWG reference implementation; "bce" = Eq. 1 log form
+  lambda_adv: 4.0
+
+train:
+  device: auto               # cuda > mps > cpu
+  steps: 800000
+  disc_start: 100000
+  batch_size: 12
+  crop_frames: 50            # 1 s
+  lr_g: 5.0e-4
+  lr_d: 5.0e-5
+  lr_step_g: 75000
+  lr_step_d: 100000
+  grad_clip_g: 10.0
+  grad_clip_d: 1.0
+  ber_max: 0.0               # >0: random bit flips on the input (SDR errors), ablation
+  items_per_epoch: 100000
+  workers: 4
+  log_interval: 100
+  eval_interval: 5000
+  save_interval: 5000
+  keep_interval: 100000
+  val_items: 16

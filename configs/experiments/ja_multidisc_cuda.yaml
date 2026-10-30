@@ -1,0 +1,17 @@
+# Shared modern training objectives, usable with either waveform backend.
+inherit: ja_check_cuda.yaml
+model:
+  discriminator_kind: multi
+  multi_discriminator:
+    periods: [2, 3, 5, 7, 11]
+    period_channels: [16, 64, 128, 256, 256]
+    ffts: [256, 512, 1024]
+    spectrum_channels: 32
+loss:
+  lambda_adv: 1.0
+  lambda_fm: 2.0
+  lambda_mel: 1.0
+train:
+  steps: 800000
+  disc_start: 5000
+  freeze_d_in_g: true

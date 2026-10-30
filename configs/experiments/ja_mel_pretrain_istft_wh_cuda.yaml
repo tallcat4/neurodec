@@ -1,0 +1,6 @@
+# Clean-speech iSTFT vocoder with the Wavehax-style harmonic prior (all harmonics to Nyquist, constant
+# power, real/imag features, separate noise channel) injected through a learnable 2D conv stack.
+inherit: ja_mel_pretrain_istft_exc_cuda.yaml
+model:
+  istft: {width: 192, layers: 6, expansion: 3, n_fft: 512, hop: 80, upsample: learned, excitation: true,
+          excitation_mode: wavehax, excitation_proj: conv2d}

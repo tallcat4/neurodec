@@ -1,0 +1,7 @@
+# Backend candidate B2: phase-aware losses (instantaneous frequency + group delay) on the long-pre-trained iSTFT.
+inherit: ja_mel_pretrain_istft_long_cuda.yaml
+loss:
+  lambda_phase: 1.0
+  phase: {n_fft: 512, hop: 80, floor_db: -50.0}
+train:
+  disc_start: 0

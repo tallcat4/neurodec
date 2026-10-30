@@ -1,0 +1,4 @@
+# Clean-speech iSTFT vocoder with cyclic-noise excitation (Wang & Yamagishi 2020) from teacher F0 / voicing.
+inherit: ja_mel_pretrain_istft_exc_cuda.yaml
+model:
+  istft: {width: 192, layers: 6, expansion: 3, n_fft: 512, hop: 80, upsample: learned, excitation: true, excitation_mode: cyclic}

@@ -1,0 +1,3 @@
+# 12 h campaign, proposed frontend, iSTFT with the learned condition upsampler (pairs with mel_istft_long).
+inherit: ja_bittoken_mlp_istft_learned_cuda.yaml
+data_dir: data/bits49

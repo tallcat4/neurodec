@@ -1,0 +1,13 @@
+# Gender-balanced clean-speech vocoder pre-training (codec-independent; no recording budget).
+# The JVS+JSUT pre-training speech was 34 % male by hours (JSUT is one female speaker), and every
+# iSTFT vocoder's upper bound is ~0.28 PESQ lower on male test speakers with equal log-mel error.
+# This continues runs/mel_istft_long with LibriTTS-R added (more male speech) and male / female
+# speech sampled with equal total probability. Test speakers of ja_check AND bits49 are excluded.
+inherit: ja_mel_pretrain_istft_long_cuda.yaml
+mel_pretrain:
+  corpora:
+    - {name: jvs, type: jvs, lang: ja, root: corpora/jvs_ver1}
+    - {name: jsut, type: jsut, lang: ja, root: corpora/jsut_ver1.1}
+    - {name: libritts_r, type: libritts, lang: en, root: corpora/LibriTTS_R}
+  exclude_test_from: [data/bits49]
+  balance_gender: true

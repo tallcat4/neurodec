@@ -1,0 +1,7 @@
+# CELP codec with the recommended configuration: wide frontend trained through the frozen clean-speech vocoder.
+inherit: celp80_bittoken_wide_istft_cuda.yaml
+model:
+  mel_bridge: true
+train:
+  freeze_backend: true
+  disc_start: 0

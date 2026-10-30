@@ -1,0 +1,4 @@
+inherit: ja_bittoken_mlp_multidisc_cuda.yaml
+model:
+  backend: istft
+  istft: {width: 192, layers: 6, expansion: 3, n_fft: 512, hop: 80}

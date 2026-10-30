@@ -1,0 +1,32 @@
+{
+  "note": "PoC conclusion 2026-10-29: user judged the ambe49 decoder good on both genders by ear (not perfect).",
+  "checkpoints": {
+    "decoder_ambe49": {
+      "file": "checkpoints/final_20261029_ambe49_decoder_step30000.pt",
+      "source": "runs/joint_b49_wide_bridge_f0ap/step30000.pt",
+      "step": 30000,
+      "sha256": "0d20823bc32902e65634c152202a961efc154e370b017c349f0429dfd75b6182",
+      "source_sha256": "4d7ec1d3b079466619cdbbe21c91a291bc31716104163756236ee7fa8c5dba70",
+      "bytes": 38214125,
+      "frontend": "bits"
+    },
+    "clean_speech_vocoder": {
+      "file": "checkpoints/final_20261029_clean_speech_vocoder_step30000.pt",
+      "source": "runs/mel_istft_excap/last.pt",
+      "step": 30000,
+      "sha256": "08669aad5b893fefb6ba443d5e6df67c37171eb6a7f1b2f0ed71c95c7c5f102e",
+      "source_sha256": "1c15f4da1125ade2082317c5436161841672f3fc4b64118c58449667f80675fc",
+      "bytes": 6793107,
+      "frontend": "mel"
+    },
+    "decoder_celp80": {
+      "file": "checkpoints/final_20261029_celp80_decoder_step30000.pt",
+      "source": "runs/joint_celp80_wide_bridge/step30000.pt",
+      "step": 30000,
+      "sha256": "a5d0fae6b6910af954f1d38155a2684cd58d16f9b67404500b784b2a97aa0fdf",
+      "source_sha256": "84d4058e814a8dd32d1d0d41ed472377c0eccd4d2e7ebeb1b94ca185b1b1faf4",
+      "bytes": 37799413,
+      "frontend": "bits"
+    }
+  }
+}

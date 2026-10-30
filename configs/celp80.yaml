@@ -1,0 +1,7 @@
+# Second, unrelated codec family (CELP, mrl-celp-c, 3.95 kbps): same procedure, different bits.
+inherit: base.yaml
+bits: mrl80
+data_dir: data/celp80
+blackbox:
+  secret_seed: 20261028
+  block_frames: 2            # one 40 ms codec frame = a burst of two 20 ms model frames

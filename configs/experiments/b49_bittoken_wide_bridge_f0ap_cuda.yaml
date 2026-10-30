@@ -1,0 +1,5 @@
+# Recommended configuration + periodicity heads with band-wise aperiodicity (multiband excitation),
+# harmonic-plus-noise excitation mixed per band. Pairs with a vocoder pre-trained with aperiodicity.
+inherit: b49_bittoken_wide_bridge_f0exc_cuda.yaml
+model:
+  ap_bands: 5

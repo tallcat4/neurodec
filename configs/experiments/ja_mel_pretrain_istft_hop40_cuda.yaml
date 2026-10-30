@@ -1,0 +1,7 @@
+# Clean-speech iSTFT vocoder with 5 ms synthesis hop (hop 40 at 8 kHz) instead of 10 ms: tests whether
+# the male upper-bound gap (one pitch period ~ one hop for low F0) comes from temporal resolution.
+# Trained from scratch (the upsampler/hop change prevents transfer), so compare with the from-scratch
+# hop-80 run at the same step count.
+inherit: ja_mel_pretrain_istft_long_cuda.yaml
+model:
+  istft: {width: 192, layers: 6, expansion: 3, n_fft: 512, hop: 40, upsample: learned}
