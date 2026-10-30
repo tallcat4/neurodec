@@ -1,5 +1,5 @@
 {
-  "note": "PoC conclusion 2026-10-29: user judged the ambe49 decoder good on both genders by ear (not perfect).",
+  "note": "Checkpoints exported 2026-10-29 from the training runs listed below (inference-only: step, G, meta).",
   "checkpoints": {
     "decoder_ambe49": {
       "file": "checkpoints/final_20261029_ambe49_decoder_step30000.pt",

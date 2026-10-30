@@ -46,8 +46,8 @@ blackbox を参照していないことを確認します。
 
 ## 3. ボコーダー（コーデック非依存、通常は流用）
 
-最終版は `runs/mel_istft_excap/last.pt`（推論専用の書き出しは
-`checkpoints/final_20261029_clean_speech_vocoder_step30000.pt`）です。新規に学習するなら次のとおりです。
+配布しているボコーダーは `checkpoints/final_20261029_clean_speech_vocoder_step30000.pt`（推論専用）です。
+学習に使った `runs/mel_istft_excap/last.pt`（識別器を含む）は Git 管理外です。新規に学習するなら次のとおりです。
 
 ```powershell
 .\run-neurodec.ps1 -m scripts.run_stage --job runs/vocoder_job --config configs/final/clean_speech_vocoder.yaml `
@@ -87,7 +87,7 @@ completed / failed）で分かります。既存の run があれば起動を拒
   試聴セットにはこの 3 種だけを入れます（正解 mel 上限は紛らわしいので `--with-upper-bound` の診断時のみ）。
 - 判定の目安: 提案が自身のデコーダーを sim と BER で上回り、clean で 0.2 以内なら AMBE+2 と同水準です。
 
-## 6. 出荷と復号
+## 6. 推論用チェックポイントの書き出しと復号
 
 ```powershell
 .\run-neurodec.ps1 -m scripts.export_checkpoint --out-json checkpoints/<codec>.json `
@@ -104,4 +104,4 @@ blackbox 節（seed）は入りません。
 - 学習を途中で止めるには run ディレクトリに `STOP` ファイルを置きます（次のログ間隔で保存して終了）。再開は
   `STOP` を消して `python -m neurodec.train --config <config> --run runs/<run>` です（`run_stage` は新しい `--job` で）。
 - 比較は同じ step 数で行い、速度は単独実行のベンチ（`scripts/benchmark_backends.py`）で測ります。
-- 実行していないテスト・学習・評価の結果は書きません。試聴 WAV は必ず同一発話で揃えます。
+- 試聴 WAV は同一発話で揃えます。
