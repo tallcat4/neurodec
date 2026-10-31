@@ -9,7 +9,7 @@ import torch.nn as nn
 from .dequant import DequantNet
 from .frontends import BitTokenFrontend
 from .pwg import GAU, PWGGenerator, Upsample
-from .istft import ISTFTGenerator
+from .istft import ISTFTGenerator, conv1d
 
 FRAME = 160
 SR = 8000
@@ -46,10 +46,10 @@ class LogMel(nn.Module):
 class MelFrontend(nn.Module):
     """Upper bound / pre-training condition: clean log-mel instead of bits."""
 
-    def __init__(self, n_mels=80, out_dim=56, n_fft=512, win=400):
+    def __init__(self, n_mels=80, out_dim=56, n_fft=512, win=400, causal=False):
         super().__init__()
         self.mel = LogMel(n_fft=n_fft, win=win, n_mels=n_mels)
-        self.proj = nn.Conv1d(n_mels, out_dim, 5, padding=2)
+        self.proj = conv1d(n_mels, out_dim, 5, causal)
         self.out_dim = out_dim
 
     def forward(self, wav):
@@ -75,7 +75,8 @@ def build_frontend(cfg: dict, n_bits: int, bit_order=None) -> nn.Module:
             raise ValueError("The bit-token frontend works per frame; set dequant.group_frames to 1")
         return BitTokenFrontend(n_bits, block_frames=int(m.get("block_frames", 1)), out_dim=dq["ffn_dims"][-1],
                                 aux_mels=aux, f0_head=bool(m.get("f0_head", False)),
-                                ap_bands=int(m.get("ap_bands", 0)), **m.get("bittoken", {}))
+                                ap_bands=int(m.get("ap_bands", 0)), causal=bool(m.get("causal", False)),
+                                lookahead=int(m.get("lookahead_frames", 0)), **m.get("bittoken", {}))
     raise ValueError(f"Unknown frontend_kind: {kind}")
 
 
@@ -91,7 +92,8 @@ class NeuralDecoder(nn.Module):
         else:
             spec = m.get("mel_spec", {})  # e.g. {n_mels: 160, n_fft: 1024, win: 800} for finer low-band resolution
             self.frontend = MelFrontend(n_mels=spec.get("n_mels", 80), out_dim=dq["ffn_dims"][-1],
-                                        n_fft=spec.get("n_fft", 512), win=spec.get("win", 400))
+                                        n_fft=spec.get("n_fft", 512), win=spec.get("win", 400),
+                                        causal=bool(m.get("causal", False)))
             scales = list(m["upsample_scales"])
         assert math.prod(scales) == FRAME * g
         self.kind = frontend
@@ -103,9 +105,10 @@ class NeuralDecoder(nn.Module):
         if m.get("mel_bridge", False):
             if frontend != "bits" or self.backend_kind != "istft" or not int(m.get("aux_mels", 0) or 0):
                 raise ValueError("mel_bridge needs the bits frontend, the istft backend and aux_mels > 0")
-            self.bridge = nn.Conv1d(int(m["aux_mels"]), self.frontend.out_dim, 5, padding=2)
+            self.bridge = conv1d(int(m["aux_mels"]), self.frontend.out_dim, 5, bool(m.get("causal", False)))
         if self.backend_kind == "istft":
-            self.generator = ISTFTGenerator(self.frontend.out_dim, samples_per_frame=FRAME * g, **m.get("istft", {}))
+            self.generator = ISTFTGenerator(self.frontend.out_dim, samples_per_frame=FRAME * g,
+                                            causal=bool(m.get("causal", False)), **m.get("istft", {}))
             return
         if self.backend_kind != "pwg":
             raise ValueError(f"Unknown backend: {self.backend_kind}")

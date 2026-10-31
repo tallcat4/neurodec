@@ -105,3 +105,5 @@ blackbox 節（seed）は入りません。
   `STOP` を消して `python -m neurodec.train --config <config> --run runs/<run>` です（`run_stage` は新しい `--job` で）。
 - 比較は同じ step 数で行い、速度は単独実行のベンチ（`scripts/benchmark_backends.py`）で測ります。
 - 試聴 WAV は同一発話で揃えます。
+- コーデック自身のデコーダーが手元にない実機（受信したビット列とクリーン音声の組だけがある場合）では、設定に
+  `reference: false` を書くと、評価は neurodec の出力だけで行います。

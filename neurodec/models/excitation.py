@@ -17,8 +17,13 @@ from torch import nn
 class HarmonicExcitation(nn.Module):
     def __init__(self, n_fft: int = 512, hop: int = 80, samples_per_frame: int = 160, sr: int = 8000,
                  max_harmonics: int = 40, noise_level: float = 0.03, mode: str = "harmonic",
-                 cyclic_decay: float = 0.5):
+                 cyclic_decay: float = 0.5, causal: bool = False, lookahead: int = 0):
         super().__init__()
+        # causal: F0 is interpolated from the previous to the current frame, and analysis frame m uses
+        # the excitation up to the end of its own hop only (window ending at (m + 1) * hop);
+        # with lookahead 1, F0 / voicing / aperiodicity are interpolated between frame centres (the second
+        # half of frame t uses frame t + 1), the analysis window stays causal
+        self.causal, self.lookahead = causal, int(lookahead)
         if mode not in ("harmonic", "cyclic", "wavehax"):
             raise ValueError(f"Unknown excitation mode: {mode}")
         self.n_fft, self.hop, self.spf, self.sr = n_fft, hop, samples_per_frame, sr
@@ -36,8 +41,14 @@ class HarmonicExcitation(nn.Module):
         f0 = f0_hz.clamp_min(1.0).float()
         v = voiced.float()
         # sample-rate F0 and voicing by linear interpolation between frame centres
-        f0_s = torch.nn.functional.interpolate(f0[:, None], size=n, mode="linear", align_corners=False)[:, 0]
-        v_s = torch.nn.functional.interpolate(v[:, None], size=n, mode="linear", align_corners=False)[:, 0]
+        if self.causal and not self.lookahead:  # sample i of frame t lies between F0[t-1] (frame start) and F0[t] (end)
+            def ramp(x):
+                x = torch.cat([x[:, :1], x], 1)[:, None]
+                return torch.nn.functional.interpolate(x, size=n + 1, mode="linear", align_corners=True)[:, 0, 1:]
+            f0_s, v_s = ramp(f0), ramp(v)
+        else:
+            f0_s = torch.nn.functional.interpolate(f0[:, None], size=n, mode="linear", align_corners=False)[:, 0]
+            v_s = torch.nn.functional.interpolate(v[:, None], size=n, mode="linear", align_corners=False)[:, 0]
         phase = torch.cumsum(2 * math.pi * f0_s / self.sr, dim=1)
         noise = torch.randn(B, n, device=f0.device)
         if self.mode == "wavehax":
@@ -85,8 +96,12 @@ class HarmonicExcitation(nn.Module):
         frequency band (multiband excitation; Griffin & Lim 1988), instead of one voicing flag."""
         with torch.autocast(device_type=f0_hz.device.type, enabled=False):
             e, periodic, noise = self.waveform(f0_hz, voiced)
-            stft = lambda x: torch.stft(x, self.n_fft, self.hop, window=self.window.float(), center=True,
-                                        return_complex=True)
+            if self.causal:
+                stft = lambda x: torch.stft(torch.nn.functional.pad(x, (self.n_fft - self.hop, 0)), self.n_fft,
+                                            self.hop, window=self.window.float(), center=False, return_complex=True)
+            else:
+                stft = lambda x: torch.stft(x, self.n_fft, self.hop, window=self.window.float(), center=True,
+                                            return_complex=True)
             if self.mode == "wavehax":
                 if return_spec:
                     raise ValueError("source-filter synthesis needs the harmonic or cyclic excitation mode")
@@ -105,7 +120,11 @@ class HarmonicExcitation(nn.Module):
                 P, N = stft(periodic), stft(noise)
                 bins, frames = P.shape[1], P.shape[2]
                 a = aperiodicity.float().clamp(0, 1).transpose(1, 2)  # [B, bands, T]
-                a = torch.nn.functional.interpolate(a, size=frames, mode="linear", align_corners=False)
+                if self.causal and not self.lookahead:
+                    a = a.repeat_interleave(self.spf // self.hop, dim=2)
+                    a = torch.nn.functional.pad(a, (0, max(frames - a.shape[2], 0)), mode="replicate")[..., :frames]
+                else:
+                    a = torch.nn.functional.interpolate(a, size=frames, mode="linear", align_corners=False)
                 a = torch.nn.functional.interpolate(a.transpose(1, 2), size=bins, mode="nearest").transpose(1, 2)
                 spec = P * (1 - a) + N * a * 0.5
             mag = torch.log(spec.abs() + 1e-5)

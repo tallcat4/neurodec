@@ -25,8 +25,14 @@ class BitTokenFrontend(nn.Module):
     def __init__(self, n_bits: int, block_frames: int = 1, d_token: int = 64, token_layers: int = 2,
                  token_heads: int = 4, width: int = 256, layers: int = 6, expansion: int = 3,
                  out_dim: int = 56, aux_mels: int = 0, mixer: str = "transformer", mlp_hidden: int = 1024,
-                 dropout: float = 0.0, f0_head: bool = False, ap_bands: int = 0):
+                 dropout: float = 0.0, f0_head: bool = False, ap_bands: int = 0, causal: bool = False,
+                 lookahead: int = 0):
+        """causal: the temporal blocks see only past frames; the output for frame t is then read at
+        t + lookahead, i.e. it uses the bits of at most `lookahead` future frames (a fixed decoding delay)."""
         super().__init__()
+        if lookahead and not causal:
+            raise ValueError("lookahead applies to the causal frontend only")
+        self.causal, self.lookahead = causal, int(lookahead)
         if mixer not in ("transformer", "mlp"):
             raise ValueError(f"Unknown mixer: {mixer}")
         if n_bits < 1 or block_frames < 1 or layers < 1 or width < 1:
@@ -46,7 +52,7 @@ class BitTokenFrontend(nn.Module):
             self.tokens = None
             self.read = nn.Sequential(nn.Linear(n_bits, mlp_hidden), nn.GELU(), nn.Linear(mlp_hidden, width))
         self.burst = nn.Parameter(torch.zeros(block_frames, width))
-        self.blocks = nn.Sequential(*(SpectralBlock(width, expansion, 1 / layers) for _ in range(layers)))
+        self.blocks = nn.Sequential(*(SpectralBlock(width, expansion, 1 / layers, causal) for _ in range(layers)))
         self.norm = nn.LayerNorm(width, eps=1e-6)
         self.out = nn.Linear(width, out_dim)
         self.aux = nn.Linear(width, aux_mels) if aux_mels else None
@@ -74,6 +80,9 @@ class BitTokenFrontend(nn.Module):
             h = self.read(bits * 2.0 - 1.0)
         h = h + self.burst[torch.arange(T, device=bits.device) % self.block_frames]
         h = self.blocks(h.transpose(1, 2)).transpose(1, 2)
+        if self.lookahead:  # frame t <- position t + L (the last frames repeat: their future is not there)
+            L = self.lookahead
+            h = torch.cat([h[:, L:], h[:, -1:].expand(-1, min(L, T), -1)], dim=1)[:, :T]
         return self.norm(h)
 
     def forward(self, bits: torch.Tensor) -> torch.Tensor:

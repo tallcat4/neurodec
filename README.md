@@ -29,6 +29,9 @@ AMBE+2 half-rate（49 bit / 20 ms）と CELP（160 bit / 40 ms）の 2 系統で
 - **BitToken フロントエンド**: ビット位置ごとの埋め込み → フレーム内 MLP → 時間方向 ConvNeXt。ビットの順序や隣接性を仮定しません。
 - **ボコーダー**はクリーン音声だけで事前学習し、凍結します。コーデックごとに学習するのはフロントエンドだけです。
 - **補助ヘッド**（log-F0、有声度、5 帯域の非周期性）と学習時の**ビット誤り付加**（0〜2 %）で品質と頑健性を得ています。
+- **因果モード**（`model.causal`、任意で 1 フレームの先読み）で、受信しながら逐次に復号できる低遅延のデコーダーも学習できます。
+  TOKUDER の実機データでは、経験的に、先読み 1 フレーム（20 ms）で非因果と同等以上の品質（PESQ 2.53 対 2.46）を、
+  半分以下のパラメータで得ています（[docs/experiments.md](docs/experiments.md#因果モードtokuder-での経験)）。
 
 設計の根拠は [docs/method.md](docs/method.md)、比較した代替案は [docs/experiments.md](docs/experiments.md) にあります。
 
@@ -78,7 +81,7 @@ neurodec/              ライブラリ
 configs/               データ生成の定義（base, bits49, bits72, celp80, smoke）、final/（学習設定）、experiments/（比較に使った設定）
 scripts/               new_codec_pipeline.py と各段（precompute_f0, probe_frontend, run_stage, overnight_queue, listen_lang）、
                        gender_summary, export_checkpoint, assemble_decoder, benchmark_backends、diagnostics/（分析ツール）
-tests/                 55 件（ブラックボックス境界のテストを含む）
+tests/                 62 件（ブラックボックス境界、因果モードの未来非依存のテストを含む）
 checkpoints/           推論用チェックポイント
 docs/                  method, new_codec, results, experiments, references
 corpora/, data/, runs/, results/   ローカル専用（Git 管理外）。推論だけなら checkpoints/ と configs/final/ で足ります

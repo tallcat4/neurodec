@@ -11,10 +11,33 @@ from torch.nn import functional as F
 from .excitation import HarmonicExcitation
 
 
+class CausalConv1d(nn.Conv1d):
+    """Conv1d that sees only the current and past steps (left padding); same parameters as nn.Conv1d."""
+
+    def __init__(self, in_channels, out_channels, kernel_size, groups=1):
+        super().__init__(in_channels, out_channels, kernel_size, groups=groups)
+
+    def forward(self, x):
+        return super().forward(F.pad(x, (self.kernel_size[0] - 1, 0)))
+
+
+def conv1d(in_channels, out_channels, kernel_size, causal=False, groups=1):
+    if causal:
+        return CausalConv1d(in_channels, out_channels, kernel_size, groups=groups)
+    return nn.Conv1d(in_channels, out_channels, kernel_size, padding=kernel_size // 2, groups=groups)
+
+
+class _CausalTime2d(nn.Conv2d):
+    """Conv2d over (frequency, time): centred in frequency, causal in time (the last axis)."""
+
+    def forward(self, x):
+        return super().forward(F.pad(x, (self.kernel_size[1] - 1, 0)))
+
+
 class SpectralBlock(nn.Module):
-    def __init__(self, width, expansion, scale):
+    def __init__(self, width, expansion, scale, causal=False):
         super().__init__()
-        self.temporal = nn.Conv1d(width, width, 7, padding=3, groups=width)
+        self.temporal = conv1d(width, width, 7, causal, groups=width)
         self.norm = nn.LayerNorm(width, eps=1e-6)
         self.expand = nn.Linear(width, width * expansion)
         self.project = nn.Linear(width * expansion, width)
@@ -29,12 +52,14 @@ class SpectralBlock(nn.Module):
 class ExcitationProjector(nn.Module):
     """[B, C * F, T] excitation features -> 2D convs over (F, T) -> [B, width, T]."""
 
-    def __init__(self, channels, bins, width, hidden=8):
+    def __init__(self, channels, bins, width, hidden=8, causal=False):
         super().__init__()
         self.channels, self.bins = channels, bins
-        self.conv = nn.Sequential(nn.Conv2d(channels, hidden, (7, 3), padding=(3, 1)), nn.GELU(),
-                                  nn.Conv2d(hidden, hidden, (7, 3), padding=(3, 1)), nn.GELU(),
-                                  nn.Conv2d(hidden, 2, (7, 3), padding=(3, 1)))
+        if causal:
+            conv = lambda i, o: _CausalTime2d(i, o, (7, 3), padding=(3, 0))
+        else:
+            conv = lambda i, o: nn.Conv2d(i, o, (7, 3), padding=(3, 1))
+        self.conv = nn.Sequential(conv(channels, hidden), nn.GELU(), conv(hidden, hidden), nn.GELU(), conv(hidden, 2))
         self.out = nn.Conv1d(2 * bins, width, 1)
 
     def forward(self, feats):
@@ -47,8 +72,17 @@ class ISTFTGenerator(nn.Module):
     def __init__(self, input_channels, samples_per_frame=160, width=192,
                  layers=6, expansion=3, n_fft=512, hop=80, upsample='linear', excitation=False,
                  excitation_mode='harmonic', excitation_proj='linear', excitation_harmonics=40,
-                 source_filter=False, gate_floor=1.0):
+                 source_filter=False, gate_floor=1.0, causal=False, lookahead=0):
+        """causal: every step depends only on the current and earlier frames, so the decoder can run
+        frame by frame; the only look-ahead left is the overlap-add of the centred iSTFT (n_fft / 2 samples).
+        lookahead (causal only; 0 or 1): frame t may also use frame t + 1, through the upsampler and the
+        excitation's F0 / aperiodicity interpolation (centred between frames), to smooth the frame joins."""
         super().__init__()
+        self.causal = bool(causal)
+        if lookahead not in (0, 1) or (lookahead and not self.causal):
+            raise ValueError('lookahead must be 0 or 1, and applies to the causal generator only')
+        self.lookahead = int(lookahead)
+        self.centred = centred = not self.causal or bool(self.lookahead)  # interpolation between frame centres (needs frame t + 1)
         if layers < 1 or n_fft < 4 or n_fft % 2 or not 0 < hop < n_fft // 2:
             raise ValueError('Require layers >= 1, even n_fft, and 0 < hop < n_fft/2')
         if samples_per_frame % hop:
@@ -63,12 +97,15 @@ class ISTFTGenerator(nn.Module):
             # linear interpolation, so the model can smooth the 20 ms steps that otherwise
             # leak into the waveform as frame-rate amplitude buzz.
             # Kernel 3*ratio spans three frames (room to learn a wider smoother than linear).
+            # Causal: no padding, so output step j = t * ratio + p sees frames t, t-1, t-2 only (cropped in forward);
+            # centred: frames t - 1, t, t + 1.
             self.upsampler = nn.ConvTranspose1d(input_channels, input_channels, 3 * ratio, ratio,
-                                                padding=ratio, groups=input_channels)
-        self.input = nn.Conv1d(input_channels, width, 7, padding=3)
+                                                padding=ratio if centred else 0, groups=input_channels)
+        self.input = conv1d(input_channels, width, 7, self.causal)
         # Optional harmonic-plus-noise excitation features (from F0 / voicing) added at the input.
         self.excitation = HarmonicExcitation(n_fft, hop, samples_per_frame, mode=excitation_mode,
-                                             max_harmonics=excitation_harmonics) if excitation else None
+                                             max_harmonics=excitation_harmonics, causal=self.causal,
+                                             lookahead=self.lookahead) if excitation else None
         # Source-filter synthesis: the network outputs a complex filter (log gain + phase shift) that is
         # applied to the excitation spectrum, so periodicity at the given F0 holds by construction
         # (MBE / NSF principle) and the F0 prior cannot be ignored. Noise enters only through the
@@ -94,11 +131,11 @@ class ISTFTGenerator(nn.Module):
                 # convs (SiFi-GAN 'Direct' / 1-2 layer Harmonic-Net failed); kernel 7 along frequency
                 # spans neighbouring harmonics of low F0 (3.8 bins apart at 60 Hz).
                 self.exc_proj = ExcitationProjector(self.excitation.out_channels // (n_fft // 2 + 1),
-                                                    n_fft // 2 + 1, width)
+                                                    n_fft // 2 + 1, width, causal=self.causal)
             else:
                 self.exc_proj = nn.Conv1d(self.excitation.out_channels, width, 1)
         self.input_norm = nn.LayerNorm(width, eps=1e-6)
-        self.blocks = nn.Sequential(*(SpectralBlock(width, expansion, 1 / layers) for _ in range(layers)))
+        self.blocks = nn.Sequential(*(SpectralBlock(width, expansion, 1 / layers, self.causal) for _ in range(layers)))
         self.output_norm = nn.LayerNorm(width, eps=1e-6)
         self.spectrum = nn.Linear(width, 2 * (n_fft // 2 + 1))
         self.register_buffer('window', torch.hann_window(n_fft), persistent=False)
@@ -108,7 +145,11 @@ class ISTFTGenerator(nn.Module):
                 nn.init.zeros_(layer.bias)
         if self.upsampler is not None:
             with torch.no_grad():  # start as exact linear interpolation (trunc_normal above is overridden)
-                taps = (1 - (torch.arange(3 * ratio) + 0.5 - 1.5 * ratio).abs() / ratio).clamp_min(0)
+                if not centred:  # from the previous frame (taps r..2r-1) to the current one (taps 0..r-1)
+                    k = torch.arange(3 * ratio, dtype=torch.float32)
+                    taps = torch.where(k < ratio, (k + 1) / ratio, (1 - (k - ratio + 1) / ratio).clamp_min(0))
+                else:
+                    taps = (1 - (torch.arange(3 * ratio) + 0.5 - 1.5 * ratio).abs() / ratio).clamp_min(0)
                 self.upsampler.weight.copy_(taps.view(1, 1, -1).expand(input_channels, 1, -1))
                 self.upsampler.bias.zero_()
 
@@ -119,6 +160,8 @@ class ISTFTGenerator(nn.Module):
         # including short and grouped-frame inputs, without zero padding audio.
         if self.upsampler is not None:
             h = self.upsampler(condition)[..., : length // self.hop]
+        elif not self.centred:  # hold each frame (linear interpolation would need the next one)
+            h = condition.repeat_interleave(self.samples_per_frame // self.hop, dim=-1)
         else:
             h = F.interpolate(condition, size=length // self.hop, mode='linear', align_corners=False)
         h = F.pad(h, (0, 1), mode='replicate')

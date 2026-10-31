@@ -47,7 +47,7 @@ def evaluate(cfg, ckpts, mel_ckpt, bers, out: Path, max_utts=None, samples=4, se
     models = {Path(c).parent.name + ("" if Path(c).stem == "last" else f"@{Path(c).stem}"): load_model(c, device)[0]
               for c in ckpts}
     mel = load_model(mel_ckpt, device)[0] if mel_ckpt else None
-    rx = Receiver.from_config(cfg)
+    rx = Receiver.from_config(cfg) if has_reference(cfg) else None  # a real radio: no reference decoder
     g = cfg["blackbox"]["block_frames"]
     rows = []
     timings = []
@@ -64,7 +64,8 @@ def evaluate(cfg, ckpts, mel_ckpt, bers, out: Path, max_utts=None, samples=4, se
             outs = defaultdict(dict)  # system -> tx -> wav
             for position, i in enumerate(idx, start=1):
                 bits = flip_bits(tx.bits[i], ber, np.random.default_rng(i))
-                outs["reference"][i] = rx.receive(bits)
+                if rx is not None:
+                    outs["reference"][i] = rx.receive(bits)
                 for name, G in models.items():
                     # Model construction and checkpoint ordering must not change
                     # the noise used to score stochastic waveform generators.
@@ -107,6 +108,10 @@ def evaluate(cfg, ckpts, mel_ckpt, bers, out: Path, max_utts=None, samples=4, se
     (out / "summary.md").write_text(table, encoding='utf-8', newline='\n')
     print(table)
     return rows
+
+
+def has_reference(cfg) -> bool:
+    return cfg.get("reference", True)  # false for a real radio whose decoder is not available
 
 
 @torch.no_grad()
